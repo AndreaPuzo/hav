@@ -56,6 +56,304 @@ hav_qword_t __fmtnum (
     __num_p     num
 ) ;
 
+hav_qword_t __vafmtstr (
+    hav_char_p       dst ,
+    hav_qword_t      len ,
+    const hav_char_p src ,
+    hav_char_t       lst ,
+    hav_char_p       arg
+)
+{
+
+}
+
+_HAV_API hav_qword_t hav_afmtstr (
+    hav_char_p       dst ,
+    hav_qword_t      len ,
+    const hav_char_p src ,
+    hav_char_p       ap
+)
+{
+#define __va_arg(__ap, __typ) *(__typ *)(__ap) ; (__ap) += sizeof(__typ) ;
+
+    hav_qword_t n , i ;
+
+    for (n = i = 0 ; src[i] && n < len ;) {
+
+        /* check for a format sequence */
+        if ('%' == src[i] && '%' != src[++i]) {
+
+            __fmt_t fmt ;
+            __num_t num ;
+            __str_t str ;
+
+            /* initialize format variables */
+
+            fmt.prefix[0] = fmt.prefix[1] = 0 ;
+            fmt.suffix[0] = fmt.suffix[1] = 0 ;
+            fmt.alignment    = '>' ;
+            fmt.padding_char = ' ' ;
+            fmt.width        = 0   ;
+            fmt.precision    = 0   ;
+
+            num.sign     = 0   ;
+            num.base     = 10  ;
+            num.type     = 'u' ;
+            num.notation = ' ' ;
+
+            str.data = HAV_NULL ;
+            str.chars[0] = str.chars[1] = 0 ;
+
+            /* scan the sequence */
+
+            if ('[' == src[i]) {
+                /* enable prefix */
+                fmt.prefix[0] = ' ' ;
+                ++i ;
+            }
+
+            if (']' == src[i]) {
+                /* enable suffix */
+                fmt.suffix[0] = ' ' ;
+                ++i ;
+            }
+
+            if ('+' == src[i]) {
+                /* force sign */
+                num.sign = '+' ;
+                ++i ;
+            }
+
+            if ('<' == src[i] || '-' == src[i] || /* default */ '>' == src[i]) {
+                /* set the alignment */
+                fmt.alignment = src[i] ;
+                ++i ;
+            }
+
+            if ('0' == src[i] || ' ' == src[i]) {
+                /* set the padding character */
+                fmt.padding_char = src[i] ;
+                ++i ;
+            } else if (':' == src[i]) {
+                ++i ;
+                /* set the padding character */
+                fmt.padding_char = src[i] ;
+                ++i ;
+            }
+
+            if ('*' == src[i]) {
+                /* set the width */
+                fmt.width = __va_arg(ap, hav_dword_t) ;
+                ++i ;
+            } else if ('1' <= src[i] && src[i] <= '9') {
+                /* scan the width */
+                do {
+                    fmt.width *= 10 ;
+                    fmt.width += src[i] - '0' ;
+                    ++i ;
+                } while ('0' <= src[i] && src[i] <= '9') ;
+            }
+
+            if ('.' == src[i]) {
+                ++i ;
+
+                if ('*' == src[i]) {
+                    /* set the precision */
+                    fmt.precision = __va_arg(ap, hav_dword_t) ;
+                    ++i ;
+                } else if ('1' <= src[i] && src[i] <= '9') {
+                    /* scan the precision */
+                    do {
+                        fmt.precision *= 10 ;
+                        fmt.precision += src[i] - '0' ;
+                        ++i ;
+                    } while ('0' <= src[i] && src[i] <= '9') ;
+                }
+            }
+
+            hav_byte_t is_long = 0 ;
+
+            if ('L' == src[i] || 'l' == src[i]) {
+                is_long = 1 ;
+                ++i ;
+            }
+
+            switch (src[i]) {
+            case 'B' : case 'b' : {
+                if (fmt.prefix[0]) {
+                    fmt.prefix[0] = '0'    ;
+                    fmt.prefix[1] = src[i] ;
+                } else if (fmt.suffix[0]) {
+                    fmt.suffix[0] = src[i] ;
+                }
+
+                num.base = 2 ;
+                goto _unsigned_integer ;
+            } break ;
+
+            case 'O' : case 'o' : {
+                if (fmt.prefix[0]) {
+                    fmt.prefix[0] = '0' ;
+                } else if (fmt.suffix[0]) {
+                    fmt.suffix[0] = src[i] ;
+                }
+
+                num.base = 8 ;
+                goto _unsigned_integer ;
+            } break ;
+
+            case 'X' : case 'x' : {
+                if (fmt.prefix[0]) {
+                    fmt.prefix[0] = '0'    ;
+                    fmt.prefix[1] = src[i] ;
+                } else if (fmt.suffix[0]) {
+                    if ('x' == src[i]) {
+                        fmt.suffix[0] = 'h' ;
+                    } else {
+                        fmt.suffix[0] = 'H' ;
+                    }
+                }
+
+                num.base = 16 ;
+                goto _unsigned_integer ;
+            } break ;
+
+            case 'U' : case 'u' : {
+                num.base = 10 ;
+
+_unsigned_integer:
+                if (is_long) {
+                    num.as_uint = __va_arg(ap, uint64_t) ;
+                } else {
+                    num.as_uint = __va_arg(ap, uint32_t) ;
+                }
+
+                ++i ;
+            } break ;
+
+            case 'I' : case 'i' : {
+                if (is_long) {
+                    num.as_int = __va_arg(ap, int64_t) ;
+                } else {
+                    num.as_int = __va_arg(ap, int32_t) ;
+                }
+
+                num.base = 10  ;
+                num.type = 'i' ;
+                ++i ;
+            } break ;
+
+            case 'F' : case 'f' : {
+                num.as_float = __va_arg(ap, double) ;
+
+                num.base = 10  ;
+                num.type = 'f' ;
+                ++i ;
+            } break ;
+
+            case 'E' : case 'e' : { /* a * 10^b */
+                num.as_float = __va_arg(ap, double) ;
+
+                num.base = 10  ;
+                num.exp_type = num.type = src[i] ;
+                num.notation = 't' ;
+                ++i ;
+            } break ;
+
+            case 'P' : case 'p' : { /* a * 2^b */
+                num.as_float = __va_arg(ap, double) ;
+
+                num.base = 10 ;
+                num.exp_type = num.type = src[i] ;
+                num.notation = 't' ;
+                ++i ;
+            } break ;
+
+            case 'C' : case 'c' : {
+                if (fmt.prefix[0] || fmt.suffix[0]) {
+                    fmt.prefix[0] = fmt.suffix[0] = '\'' ;
+                }
+
+                /* create the string */
+                str.chars[0] = __va_arg(ap, hav_dword_t) ;
+                str.data = str.chars ;
+
+                ++i ;
+            } break ;
+            
+            case 'S' : case 's' : {
+                /* check for prefix and suffix */
+                if (fmt.prefix[0] || fmt.suffix[0]) {
+                    fmt.prefix[0] = fmt.suffix[0] = '\"' ;
+                }
+
+                /* get the string */
+                str.data = __va_arg(ap, const hav_char_p) ;
+
+                ++i ;
+            } break ;
+
+            case 'R' : case 'r' : {
+                /* check for prefix and suffix */
+                if (fmt.prefix[0] || fmt.suffix[0]) {
+                    fmt.prefix[0] = fmt.suffix[0] = '\"' ;
+                }
+
+                /* get the error as string */
+                str.data = strerror(errno) ;
+
+                ++i ;
+            } break ;
+
+            case 'N' : case 'n' : {
+                hav_dword_p np = __va_arg(ap, hav_dword_p) ;
+                *np = n ;
+                ++i ;
+                goto _skip ;
+            } break ;
+            }
+
+            if (hav_is_nullptr(dst)) {
+                if (str.data) {
+                    /* insert string */
+                    n += __fmtstr(HAV_NULL, len - n, &fmt, &str) ;
+                } else {
+                    /* insert number */
+                    n += __fmtnum(HAV_NULL, len - n, &fmt, &num) ;
+                }
+            } else {
+                if (str.data) {
+                    /* insert string */
+                    n += __fmtstr(dst + n, len - n, &fmt, &str) ;
+                } else {
+                    /* insert number */
+                    n += __fmtnum(dst + n, len - n, &fmt, &num) ;
+                }
+            }
+
+_skip:
+        } else {
+            if (!hav_is_nullptr(dst)) {
+                /* put the current character */
+                dst[n] = src[i] ;
+            }
+
+            /* increment the indexes */
+
+            ++n ;
+            ++i ;
+        }
+
+    }
+
+    if (!hav_is_nullptr(dst) && n < len) {
+        /* set the end of string */
+        dst[n] = 0 ;
+    }
+
+    return n ;
+}
+
 _HAV_API hav_qword_t hav_vfmtstr (
     hav_char_p       dst ,
     hav_qword_t      len ,
@@ -66,7 +364,7 @@ _HAV_API hav_qword_t hav_vfmtstr (
     hav_qword_t n , i ;
 
     for (n = i = 0 ; src[i] && n < len ;) {
-        
+
         /* check for a format sequence */
         if ('%' == src[i] && '%' != src[++i]) {
 
@@ -262,6 +560,7 @@ _unsigned_integer:
                 }
 
                 /* create the string */
+
                 str.chars[0] = va_arg(ap, hav_dword_t) ;
                 str.data = str.chars ;
 
@@ -275,7 +574,7 @@ _unsigned_integer:
                 }
 
                 /* get the string */
-                str.data = va_arg(ap, hav_char_p) ;
+                str.data = va_arg(ap, const hav_char_p) ;
 
                 ++i ;
             } break ;

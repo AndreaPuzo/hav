@@ -21,6 +21,13 @@
 # define hav_cmpstr(__lhs, __rhs)         strcmp((__lhs), (__rhs))
 # define hav_cmpnstr(__lhs, __rhs, __len) strcmp((__lhs), (__rhs), (__len))
 
+_HAV_API hav_qword_t hav_afmtstr (
+    hav_char_p       dst ,
+    hav_qword_t      len ,
+    const hav_char_p src ,
+    hav_char_p       ap
+) ;
+
 _HAV_API hav_qword_t hav_vfmtstr (
     hav_char_p       dst ,
     hav_qword_t      len ,
