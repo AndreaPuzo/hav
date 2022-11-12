@@ -1,6 +1,12 @@
 #ifndef _HAVCFGX_H
 # define _HAVCFGX_H
 
+# ifdef _MSC_VER
+#  define _HAV_PACK(__typdef) __pragma( pack(push, 1) ) __typdef __pragma( pack(pop))
+# else
+#  define _HAV_PACK(__typdef) __typdef __attribute__((__packed__))
+# endif
+
 /* shared and static library */
 
 # ifndef _HAV_API

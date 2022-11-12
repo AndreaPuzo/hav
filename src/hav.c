@@ -794,3 +794,126 @@ _HAV_API hav_dword_t hav_clocks (
 
     return HAV_SUCCESS ;
 }
+
+_HAV_API hav_dword_t hav_load_image (
+    hav_p       hav ,
+    hav_byte_p  img ,
+    hav_qword_t len
+)
+{
+    if (len <= sizeof(hav_header_t)) {
+        _eprint("error: cannot load the image: header not found\n") ;
+        return HAV_FAILURE ;
+    }
+
+    hav_header_t header = *(hav_header_p)img ;
+    img += sizeof(hav_header_t) ;
+    len -= sizeof(hav_header_t) ;
+
+    if (HAV_MAGIC_NUMBER != header.magic_num) {
+        _eprint("error: cannot load the image: incorrect magic number\n") ;
+        return HAV_FAILURE ;
+    }
+
+    /* code */
+
+    if (len <= header.code) {
+        _eprint("error: cannot load the image: not enough bytes to load the code section\n") ;
+        return HAV_FAILURE ;
+    }
+
+    if (header.code <= header.entry_ip) {
+        header.entry_ip = 0 ;
+    }
+
+    /* data */
+
+    if (len <= header.data) {
+        _eprint("error: cannot load the image: not enough bytes to load the data section\n") ;
+        return HAV_FAILURE ;
+    }
+
+    if (header.data <= header.data_org) {
+        header.data_org = 0 ;
+    }
+
+    if (header.data < header.data_org + header.data_len) {
+        header.data_len = header.data ;
+    }
+
+    /* load code and data */
+
+    hav->code.len = header.code ;
+    hav->code.buf = (hav_byte_p)hav_alloc(hav->code.len) ;
+
+    if (hav_is_nullptr(hav->code.buf)) {
+        _eprint("error: cannot load the image: (code) %r\n") ;
+        goto _clear ;
+    }
+
+    hav->data.len = header.data ;
+    hav->data.buf = (hav_byte_p)hav_alloc(hav->data.len) ;
+
+    if (hav_is_nullptr(hav->data.buf)) {
+        _eprint("error: cannot load the image: (data) %r\n") ;
+        goto _clear ;
+    }
+
+    hav->code.ip = header.entry_ip ;
+
+    memcpy(hav->code.buf, img, header.code) ;
+    img += header.code ;
+    len -= header.code ;
+
+    memcpy(hav->data.buf + header.data_org, img, header.data_len) ;
+    img += header.data_len ;
+    len -= header.data_len ;
+
+    /* stack */
+
+    hav->stack.len = header.stack ;
+    hav->stack.buf = (hav_qword_p)hav_alloc(hav->stack.len * sizeof(hav_qword_t)) ;
+    hav->stack.bp = hav->stack.sp = 0 ;
+
+    if (hav_is_nullptr(hav->stack.buf)) {
+        _eprint("error: cannot load the image: (stack) %r\n") ;
+        goto _clear ;
+    }
+
+    /* native */
+
+    hav->natives.len = header.natives ;
+    hav->natives.buf = (hav_qword_p)hav_alloc(hav->natives.len * sizeof(hav_native_t)) ;
+
+    if (hav_is_nullptr(hav->natives.buf)) {
+        _eprint("error: cannot load the image: (natives) %r\n") ;
+        goto _clear ;
+    }
+
+    /* TODO */
+
+    return HAV_SUCCESS ;
+
+_clear:
+    if (!hav_is_nullptr(hav->code.buf)) {
+        hav_dealloc(hav->code.buf) ;
+        hav->code.buf = HAV_NULL ;
+    }
+
+    if (!hav_is_nullptr(hav->data.buf)) {
+        hav_dealloc(hav->data.buf) ;
+        hav->data.buf = HAV_NULL ;
+    }
+
+    if (!hav_is_nullptr(hav->stack.buf)) {
+        hav_dealloc(hav->stack.buf) ;
+        hav->stack.buf = HAV_NULL ;
+    }
+
+    if (!hav_is_nullptr(hav->natives.buf)) {
+        hav_dealloc(hav->natives.buf) ;
+        hav->natives.buf = HAV_NULL ;
+    }
+
+    return HAV_FAILURE ;
+}

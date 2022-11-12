@@ -8,6 +8,8 @@
 
 # define __HAV__ _HAV_VERSION
 
+# define HAV_MAGIC_NUMBER 0x01045310
+
 # ifdef _HAV_IS_EXTERNAL
 #  include <hav/havcfg.h>
 #  include <hav/havdef.h>
@@ -48,6 +50,12 @@ _HAV_API hav_dword_t hav_clocks (
     hav_byte_t  print_asm   ,
     hav_byte_t  print_stack ,
     hav_qword_t clocks
+) ;
+
+_HAV_API hav_dword_t hav_load_image (
+    hav_p       hav ,
+    hav_byte_p  img ,
+    hav_qword_t len
 ) ;
 
 #endif

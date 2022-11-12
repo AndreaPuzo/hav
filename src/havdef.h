@@ -10,6 +10,7 @@ typedef uint32_t hav_dword_t , * hav_dword_p ;
 typedef uint64_t hav_qword_t , * hav_qword_p ;
 
 typedef struct hav_s hav_t , * hav_p ;
+typedef struct hav_header_s hav_header_t , * hav_header_p ;
 typedef struct hav_native_s hav_native_t , * hav_native_p ;
 
 struct hav_s {
@@ -44,5 +45,19 @@ struct hav_native_s {
     hav_byte_t    argc ;
     hav_dword_t (*func)(hav_p, hav_byte_t, hav_qword_p) ; 
 } ;
+
+_HAV_PACK(
+    struct hav_header_s {
+        hav_dword_t magic_num ;
+        hav_dword_t version   ;
+        hav_qword_t code      ;
+        hav_qword_t data      ;
+        hav_qword_t stack     ;
+        hav_qword_t entry_ip  ;
+        hav_qword_t data_org  ;
+        hav_qword_t data_len  ;
+        hav_qword_t natives   ;
+    }
+) ;
 
 #endif
