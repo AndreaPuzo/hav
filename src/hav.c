@@ -129,6 +129,7 @@ hav_dword_t __fetch_inst (
         "IsFNe" , "IsFLe" , "IsFGe" ,
         "Cvfu " , "Cvfi " ,
         "Cvuf " , "Cvif " ,
+        "CrSt " ,
     } ;
 
     enum {
@@ -177,6 +178,7 @@ hav_dword_t __fetch_inst (
         _STACK_2   , _STACK_2   , _STACK_2   ,
         _STACK_1   , _STACK_1   ,
         _STACK_1   , _STACK_1   ,
+        _NO_ARGS   ,
     } ;
 
     if (HAV_N_INSTS <= _CODE(hav).buf[_IP(hav)]) {
@@ -593,17 +595,19 @@ hav_dword_t __execute_inst (
     _INST_JUMP_X(32) ;
     _INST_JUMP_X(64) ;
 
-#define _INST_JUMP_IF_X(__bits, __cond, __ID)                               \
+#define _INST_JUMP_IF_X(__bits, __opr, __ID)                                \
     case HAV_INST_JUMP_IF_ ## __ID ## _ ## __bits : {                       \
         --_SP(hav) ;                                                        \
         __int(__bits) arg = *(__int(__bits) *)(_CODE(hav).buf + _IP(hav)) ; \
                                                                             \
-        if (0 __cond _STACK(hav).buf[_SP(hav)]) {                           \
+        if (0 __opr _STACK(hav).buf[_SP(hav)]) {                            \
             if (arg < 0) {                                                  \
                 _IP(hav) += arg ;                                           \
             } else {                                                        \
                 _IP(hav) += sizeof(__int(__bits)) + arg ;                   \
             }                                                               \
+        } else {                                                            \
+            _IP(hav) += sizeof(__int(__bits)) ;                             \
         }                                                                   \
     } break ;
 
@@ -656,8 +660,10 @@ hav_dword_t __execute_inst (
     _INST_INVOKE_X(64) ;
 
     case HAV_INST_RETURN : {
-        --_SP(hav) ; _BP(hav) = _STACK(hav).buf[_SP(hav)] ;
-        --_SP(hav) ; _IP(hav) = _STACK(hav).buf[_SP(hav)] ;
+        _BP(hav) = _STACK(hav).buf[_SP(hav) - 2] ;
+        _IP(hav) = _STACK(hav).buf[_SP(hav) - 3] ;
+        _STACK(hav).buf[_SP(hav) - 3] = _STACK(hav).buf[_SP(hav) - 1] ;
+        _SP(hav) -= 2 ;
     } break ;
 
 #define __cmpfun_eq(__lhs, __rhs) ((__lhs) == (__rhs))
@@ -698,6 +704,10 @@ hav_dword_t __execute_inst (
     _INST_CONV(FLOAT_TO_INT  , int64_t , double)
     _INST_CONV(UINT_TO_FLOAT , double , uint64_t)
     _INST_CONV(INT_TO_FLOAT  , double , int64_t)
+
+    case HAV_INST_CLEAR_STACK : {
+        _SP(hav) = _BP(hav) ;
+    } break ;
     }
 
     return HAV_SUCCESS ;
@@ -714,9 +724,9 @@ void __dump_stack (
 
     hav_fmtprint("Stack (%u):\n", depth) ;
     while (depth) {
-        hav_fmtprint("0x%08lX | 0x%016lX\n", (_SP(hav) - (depth + 1)), _STACK(hav).buf[_SP(hav) - depth--]) ;
+        hav_fmtprint("0x%016lX | 0x%016lX\n", (_SP(hav) - (depth + 1)), _STACK(hav).buf[_SP(hav) - depth--]) ;
     }
-    hav_fmtprint("0x%08lX | (TOSET)\n", _SP(hav)) ;
+    hav_fmtprint("0x%016lX | (SP)\n", _SP(hav)) ;
 }
 
 _HAV_API hav_dword_t hav_clock (
@@ -779,6 +789,8 @@ _HAV_API hav_dword_t hav_clocks (
         if ((hav_qword_t)-1 == clocks) {
             ++clock_idx ;
         }
+
+//        getchar() ;
     } while (hav->state && clock_idx < clocks) ;
 
     return HAV_SUCCESS ;

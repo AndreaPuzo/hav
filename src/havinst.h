@@ -73,6 +73,7 @@ enum {
     HAV_INST_FLOAT_TO_INT          ,
     HAV_INST_UINT_TO_FLOAT         ,
     HAV_INST_INT_TO_FLOAT          ,
+    HAV_INST_CLEAR_STACK           ,
 
     HAV_N_INSTS
 } ;
