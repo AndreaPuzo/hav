@@ -182,12 +182,10 @@ int main (int argc, char **argv)
     hav_add_native(&hav, (hav_native_t){ "putchar"  , 1 , native_putchar  }, HAV_NULL) ;
 
     
-    /*
     hav_fmtprint("--------------------------------\n") ;
     hav.state = 1 ;
     hav.code.ip = 0 ;
     hav_clocks(&hav, 1, 1, -1) ;
-    */
     hav_fmtprint("--------------------------------\n") ;
     hav.state = 1 ;
     hav.code.ip = 0 ;
@@ -203,7 +201,7 @@ int main (int argc, char **argv)
     hav_clocks(&hav, 0, 0, -1) ;
     */
 
-   hav_fmteprint("| %-64s |\n| %>64s |\n", "Welcome to Hav!", "by Andpuv") ;
+   hav_fmteprint(".%@-66.\n|%-66.64s|\n|%-66@-32|\n| %64.64s |\n'%@-66'\n", "Welcome to Hav!", "by Andpuv") ;
 
     hav_dtor(&hav) ;
 

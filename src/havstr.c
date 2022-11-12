@@ -171,6 +171,40 @@ _HAV_API hav_qword_t hav_afmtstr (
                 }
             }
 
+            hav_dword_t rep_count = 0 ;
+
+            if ('@' == src[i]) {
+                ++i ;
+
+                /* repeat sequence */
+
+                hav_char_t rep_char = src[i] ;
+                ++i ;
+
+                if ('*' == src[i]) {
+                    /* set the counter */
+                    rep_count = __va_arg(ap, hav_dword_t) ;
+                    ++i ;
+                } else if ('1' <= src[i] && src[i] <= '9') {
+                    /* scan the counter */
+                    do {
+                        rep_count *= 10 ;
+                        rep_count += src[i] - '0' ;
+                        ++i ;
+                    } while ('0' <= src[i] && src[i] <= '9') ;
+                }
+
+                str.data = (hav_char_p)hav_alloc((rep_count + 1) * sizeof(hav_char_t)) ;
+
+                if (hav_is_nullptr(str.data)) {
+                    break ;
+                }
+
+                memset(str.data, rep_char, rep_count) ;
+                str.data[rep_count] = 0 ;
+                goto _add_string ;
+            }
+
             hav_byte_t is_long = 0 ;
 
             if ('L' == src[i] || 'l' == src[i]) {
@@ -313,6 +347,7 @@ _unsigned_integer:
             } break ;
             }
 
+_add_string:
             if (hav_is_nullptr(dst)) {
                 if (str.data) {
                     /* insert string */
@@ -329,6 +364,10 @@ _unsigned_integer:
                     /* insert number */
                     n += __fmtnum(dst + n, len - n, &fmt, &num) ;
                 }
+            }
+
+            if (rep_count) {
+                hav_dealloc(str.data) ;
             }
 
 _skip:
@@ -456,10 +495,49 @@ _HAV_API hav_qword_t hav_vfmtstr (
                 }
             }
 
+            hav_dword_t rep_count = 0 ;
+
+            if ('@' == src[i]) {
+                ++i ;
+
+                /* repeat sequence */
+
+                hav_char_t rep_char = src[i] ;
+                ++i ;
+
+                if ('*' == src[i]) {
+                    /* set the counter */
+                    rep_count = va_arg(ap, hav_dword_t) ;
+                    ++i ;
+                } else if ('1' <= src[i] && src[i] <= '9') {
+                    /* scan the counter */
+                    do {
+                        rep_count *= 10 ;
+                        rep_count += src[i] - '0' ;
+                        ++i ;
+                    } while ('0' <= src[i] && src[i] <= '9') ;
+                }
+
+                str.data = (hav_char_p)hav_alloc((rep_count + 1) * sizeof(hav_char_t)) ;
+
+                if (hav_is_nullptr(str.data)) {
+                    break ;
+                }
+
+                memset(str.data, rep_char, rep_count) ;
+                str.data[rep_count] = 0 ;
+                goto _add_string ;
+            }
+
             hav_byte_t is_long = 0 ;
 
             if ('L' == src[i] || 'l' == src[i]) {
                 is_long = 1 ;
+                ++i ;
+            }
+
+            if ('T' == src[i] || 't' == src[i]) {
+                num.notation = 't' ;
                 ++i ;
             }
 
@@ -599,6 +677,7 @@ _unsigned_integer:
             } break ;
             }
 
+_add_string:
             if (hav_is_nullptr(dst)) {
                 if (str.data) {
                     /* insert string */
@@ -615,6 +694,10 @@ _unsigned_integer:
                     /* insert number */
                     n += __fmtnum(dst + n, len - n, &fmt, &num) ;
                 }
+            }
+
+            if (rep_count) {
+                hav_dealloc(str.data) ;
             }
 
 _skip:

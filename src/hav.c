@@ -722,11 +722,11 @@ void __dump_stack (
         depth = _SP(hav) ;
     }
 
-    hav_fmtprint("Stack (%u):\n", depth) ;
+    hav_fmtprint(".%@-41.\n|%-41.41s|\n|%@-41|\n", "Stack") ;
     while (depth) {
-        hav_fmtprint("0x%016lX | 0x%016lX\n", (_SP(hav) - (depth + 1)), _STACK(hav).buf[_SP(hav) - depth--]) ;
+        hav_fmtprint("| 0x%016lX | 0x%016lX |\n", (_SP(hav) - (depth + 1)), _STACK(hav).buf[_SP(hav) - depth--]) ;
     }
-    hav_fmtprint("0x%016lX | (SP)\n", _SP(hav)) ;
+    hav_fmtprint("| 0x%016lX | (SP) %@ 13 |\n'%@-41'\n", _SP(hav)) ;
 }
 
 _HAV_API hav_dword_t hav_clock (
@@ -740,7 +740,7 @@ _HAV_API hav_dword_t hav_clock (
     }
 
     if (hav->code.len <= hav->code.ip) {
-        _eprint("IP (0x%lX) is out of code\n", hav->code.ip) ;
+        _eprint("IP (0x%016lX) is out of code\n", hav->code.ip) ;
         return HAV_FAILURE ;
     }
 
@@ -770,7 +770,7 @@ _HAV_API hav_dword_t hav_clocks (
 
     do {
         if (hav->code.len <= hav->code.ip) {
-            _eprint("IP (0x%lX) is out of code\n", hav->code.ip) ;
+            _eprint("IP (0x%016lX) is out of code\n", hav->code.ip) ;
             return HAV_FAILURE ;
         }
 
@@ -790,7 +790,6 @@ _HAV_API hav_dword_t hav_clocks (
             ++clock_idx ;
         }
 
-//        getchar() ;
     } while (hav->state && clock_idx < clocks) ;
 
     return HAV_SUCCESS ;
