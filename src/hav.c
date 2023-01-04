@@ -360,7 +360,7 @@ hav_dword_t __load_at (
 )
 {
     hav_byte_p  src_buf ;
-    hav_qword_t src_len ;
+    hav_qword_t src_len = 0 ;
 
     if (0 == (addr >> 48)) {
         src_buf = _DATA(hav).buf ;
